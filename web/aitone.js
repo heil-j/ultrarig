@@ -16,7 +16,7 @@
   "use strict";
   if (typeof S === "undefined" || typeof pioImport !== "function") return;   /* (a page without the preset importer: nothing to hook into) */
 
-  const SRV_KEY = "ultrarig.aiServer", OPT_KEY = "ultrarig.aiOpts", DEF_SRV = "http://127.0.0.1:8765", TIMEOUT_MS = 180000;
+  const SRV_KEY = "ultrarig.aiServer", OPT_KEY = "ultrarig.aiOpts", DEF_SRV = "http://127.0.0.1:8765", TIMEOUT_MS = 480000;   /* (free models think slowly and may be retried one after another) */
   const sameOrigin = /^https?:$/.test(location.protocol) && /^\/ultrarig(\/|$)/.test(location.pathname);
   const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private window: only for this visit */ } } };
@@ -165,7 +165,7 @@
     const rig = { types: catalogue(), captures: L.caps.list.map(x => x.name), irs: L.irs.list.map(x => x.name),
       capture_now: nameAt(L.caps, L.caps.cur), ir_now: nameAt(L.irs, L.irs.cur), amp_tone_bands: S.aeqOk || DEMO ? (S.aeqDrv || DEMO ? 6 : 5) : 0 };
     const body = { prompt, rig, current: opts.cur ? current(L) : null };
-    setBusy(true, opts.cur ? "Adjusting your tone…" : "Building your tone…");
+    setBusy(true, (opts.cur ? "Adjusting your tone…" : "Building your tone…") + " " + tr("Free AI models can take a minute or two."));
     ctl = new AbortController();
     const timer = setTimeout(() => ctl && ctl.abort(), TIMEOUT_MS);
     let res;
