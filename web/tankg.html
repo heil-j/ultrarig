@@ -2063,6 +2063,7 @@ body.ph .chain > .vwire + .amp.vrow { margin-top: 0; }
 /* mientras se arrastra, el hueco que se abre en la lista también lleva el cable */
 body.ph .chain > .slot.open { background: linear-gradient(var(--gold), var(--gold)) center / 3px 100% no-repeat, rgba(217,178,106,.08); }
 </style>
+<link rel="stylesheet" href="aitone.css">
 <script>
 /* alfa 11 (2026-11-12, un usuario con la página en blanco): la guardia del arranque, en JavaScript viejo (ES5) para que corra en cualquier navegador.
  * 1) Si el navegador no entiende el código de la página (?., ??, clases, async: un Edge de antes de 2020, Internet Explorer), en vez de la pantalla
@@ -13879,7 +13880,8 @@ async function pioAttImport(pre, doc, send, ctx) {
   Log.act("preset_import_att", { n: atts.length, load: true, up: ups.length, same: pl.same.length, none: atts.length - Object.keys(ctx.att).length });
   return { ups, notes };
 }
-async function pioImport(text) {
+/* AI tone (aitone.js): o.auto = load without the "Import?" question when nothing unsaved would be lost (the AI panel already showed what it builds) */
+async function pioImport(text, o = {}) {
   if (pioBusy) return false;
   if (bleRo()) { toast(BLE_RO_NOTE, "warn"); return false; }          /* (revisión P2-2: nada se aplicaría y la página diría que cargó) */
   const r = pioParse(text);
@@ -13903,7 +13905,7 @@ async function pioImport(text) {
   const tw = w => T(w.k, { ...w, why: w.why ? T(w.why) : "" });
   const notes = [...r.warn.map(x => T(x)), ...at.notes, ...plan.warn.map(tw)];
   const name = plan.name;
-  if (!await uiConfirm({ title: T("Import \"{name}\"?", { name }), okLabel: "Import",
+  if (!(o.auto && !edCount() && !at.ups.length) && !await uiConfirm({ title: T(o.auto ? "Load \"{name}\"?" : "Import \"{name}\"?", { name }), okLabel: o.auto ? "Load" : "Import",
     body: edCount() ? "Replaces what is playing. Unsaved changes are lost." : "Replaces what is playing.", details: notes })) return false;   /* (2026-11-11: los avisos, plegados) */
   Log.act("preset_import", { ok: true, name, blocks: plan.blocks.length, scenes: plan.scenes.length, warn: notes.length, up: at.ups.length });
   pioBusy = true; txn++; edClear();
@@ -13941,6 +13943,7 @@ async function pioImport(text) {
   const after = [...upWarn, ...(upWarn.length ? plan.warn : []), ...res.warn].map(tw);
   if (after.length) await uiAlert({ title: "Loaded, with some changes", body: after.join("\n") });
   toast(T("\"{name}\" loaded. Save it to a slot.", { name }), "ok");
+  if (o.auto) return true;                                                 /* (AI tone: the chain stays in view) */
   if (PH) setTab("presets"); else { const sd = document.querySelector(".side"); if (sd && sd.classList) { sideTop(sd); sd.classList.add("open"); } }
   return true;
 }
@@ -14580,5 +14583,7 @@ tourReturn();                                 /* alfa 9: de vuelta del demo del 
 updBoot();                                    /* 2026-11-01: aviso de versión nueva (lo guardado enseguida; la pregunta, una por día, más tarde: bloque UPDATE) */
 window.__urOk = true;                         /* la guardia del arranque (en <head>): la página terminó de arrancar */
 </script>
+<!-- AI tone (the tankgtone fork): the AI TONE button and panel. Separate file so UltraRig updates merge cleanly; it uses the page's own globals (S, pioImport...) -->
+<script src="aitone.js"></script>
 </body>
 </html>

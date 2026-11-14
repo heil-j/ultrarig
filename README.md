@@ -1,5 +1,8 @@
 # UltraRig for the M-VAVE Tank-G v1 and v2
 
+> **This fork adds AI Tone**: describe a sound and AI builds it on your pedal from your own effects, captures and IRs.
+> See [AI_TONE.md](AI_TONE.md). The control page with the feature is in [web/](web/). Everything below is the upstream README.
+
 UltraRig is an alternative firmware for the **M-VAVE Tank-G v1 and v2** guitar multi-effects pedals: NAM (Neural Amp Modeler) A2-Lite
 amp captures, an editable effects chain with parallel branches, cabinet IRs, 32 presets with 4 scenes each, a tuner, and a control page
 that runs in your browser, plus an optional Android app over Bluetooth. Out of the box the footswitches work like the factory firmware

@@ -1,0 +1,78 @@
+# AI Tone for UltraRig
+
+This fork adds an **AI TONE** button to the UltraRig control page. Describe a sound
+("warm 70s blues lead, light spring reverb"); AI builds a full UltraRig chain from the
+effects, NAM captures and cab IRs that are **on your pedal**, and it starts playing
+straight away.
+
+The button sits next to TUNER, FOOTSWITCHES and STAGE (on a phone, next to TAP).
+
+## How it works
+
+```
+UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
+  reads the pedal: effect types and ranges (FXT),  ->  POST /api/ultrarig/tone
+  captures (CLIST), IRs (ILIST), the chain              Claude builds the chain from
+                                                        that exact catalogue
+  loads the answer with UltraRig's own preset      <-  an "ultrarig-preset" v1 document
+  importer (the same one as Import preset)
+```
+
+- The AI can only choose effects, parameters, captures and IRs your pedal reported.
+  Every value is clamped twice: in tankgtone, then again by UltraRig's importer.
+- Blocks enter switched off and only switch on if the pedal's CPU allows it, exactly
+  like importing a preset file. Nothing is written to a preset slot: the sound is
+  **unsaved** until you save it to a slot with the usual Save button.
+- **Adjust what's playing** sends the current chain, so "less gain, more delay" edits
+  it instead of starting over.
+- **Download preset file** saves the result as a normal `.ultrarig.json` you can
+  import later or share.
+- The API key stays in tankgtone; the page never sees it.
+
+## Run it
+
+1. Install tankgtone with the AI and UI extras, and set a Claude API key:
+
+   ```bash
+   pip install -e ".[ui,ai]"          # in the tankgtone folder
+   set ANTHROPIC_API_KEY=sk-ant-...   # Windows; or run `ant auth login`
+   ```
+
+2. Clone this fork next to tankgtone (`C:\Projects\ultrarig` beside
+   `C:\Projects\tankgtone`), or point tankgtone at it with `--ultrarig-web`.
+
+3. Start it and open the page in Chrome or Edge:
+
+   ```bash
+   python -m tankgtone ui
+   # -> http://127.0.0.1:8765/ultrarig/
+   ```
+
+   Click **Connect** for the pedal (Web Serial works on localhost), or add `#demo` to
+   the address to try it without a pedal.
+
+You can also open `web/tankg.html` straight from disk: the panel then calls tankgtone
+at `http://127.0.0.1:8765` (change it under **AI server** in the panel).
+
+## What changed in the page
+
+- `web/aitone.js` and `web/aitone.css`: the button, the panel and the call.
+- `web/tankg.html`: three small edits: load those two files, and an `auto` option
+  on `pioImport` so an AI preset loads without the "Import?" question (it still asks
+  when you have unsaved changes).
+
+The page is otherwise UltraRig alpha 11 as released. To move to a newer UltraRig,
+copy its `web/` over this one and re-apply those three edits.
+
+## Limits
+
+- Needs tankgtone running on the same computer, and the internet for the AI call. The
+  Android app has no tankgtone next to it, so the panel tells you it can't reach it.
+- Parallel branches and scenes are not generated: the AI builds one serial chain.
+- Capture choice is only as good as the capture names on your pedal.
+- The firmware itself is unchanged: UltraRig's firmware source is not published, so
+  this is a control-page feature. Install the firmware with the official UltraRig
+  installer from the upstream releases.
+
+UltraRig is © Manuel Aguirre under the PolyForm Noncommercial License 1.0.0 (see
+`LICENSE.md`): this fork is for personal, non-commercial use.
