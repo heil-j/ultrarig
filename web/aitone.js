@@ -100,7 +100,7 @@
       body.innerHTML = `<p>${esc(tr("This page is served by tankgtone, which runs the AI. Nothing to set."))}</p><div class="row"><span id="aiPing"></span></div>`;
     } else {
       body.innerHTML = `<div class="row"><input type="text" id="aiUrl" spellcheck="false" aria-label="AI server address"><button class="btn mini" id="aiTest">Test</button></div><span id="aiPing"></span>
-        <p>${esc(tr("Start it on this computer:"))} <code>python -m tankgtone ui</code>. ${esc(tr("It needs ANTHROPIC_API_KEY (or ant auth login)."))}</p>`;
+        <p>${esc(tr("Start it on this computer:"))} <code>python -m tankgtone ui</code>. ${esc(tr("It needs OPENROUTER_API_KEY (free models) or ANTHROPIC_API_KEY."))}</p>`;
       $id("aiUrl").value = server();
       $id("aiUrl").onchange = e => { store.set(SRV_KEY, e.target.value.trim() || DEF_SRV); ping(); };
       $id("aiTest").onclick = () => { store.set(SRV_KEY, $id("aiUrl").value.trim() || DEF_SRV); ping(); };
@@ -113,8 +113,9 @@
     try {
       const r = await fetch(server() + "/api/status", { cache: "no-store" });
       const d = await r.json();
-      if (!d.ai) { p.className = "no"; p.textContent = tr("tankgtone is running, but has no API key: set ANTHROPIC_API_KEY and restart it."); return; }
-      p.className = "ok"; p.textContent = tr("Connected to tankgtone. AI ready.");
+      const who = d.ultrarig_ai !== undefined ? d.ultrarig_ai : (d.ai ? "anthropic" : null);
+      if (!who) { p.className = "no"; p.textContent = tr("tankgtone is running, but has no AI key: set OPENROUTER_API_KEY (free) or ANTHROPIC_API_KEY and restart it."); return; }
+      p.className = "ok"; p.textContent = tr(who === "openrouter" ? "Connected to tankgtone. AI ready (OpenRouter free model)." : "Connected to tankgtone. AI ready (Claude).");
     } catch (e) { p.className = "no"; p.textContent = tr("tankgtone isn't running at this address."); }
   }
 

@@ -31,12 +31,17 @@ UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
 
 ## Run it
 
-1. Install tankgtone with the AI and UI extras, and set a Claude API key:
+1. Install tankgtone with the AI and UI extras, and give it one AI key:
 
    ```bash
-   pip install -e ".[ui,ai]"          # in the tankgtone folder
-   set ANTHROPIC_API_KEY=sk-ant-...   # Windows; or run `ant auth login`
+   pip install -e ".[ui,ai]"            # in the tankgtone folder
+   setx OPENROUTER_API_KEY sk-or-...    # free: openrouter.ai, its ":free" models
+   setx ANTHROPIC_API_KEY sk-ant-...    # or paid: Claude (used first when both are set)
    ```
+
+   OpenRouter's free models cost nothing but are rate limited (a daily cap) and are
+   not Claude: expect somewhat less careful tone choices. Pick other free models with
+   `TANKGTONE_OPENROUTER_MODEL` (comma-separated ids, first one tried first).
 
 2. Clone this fork next to tankgtone (`C:\Projects\ultrarig` beside
    `C:\Projects\tankgtone`), or point tankgtone at it with `--ultrarig-web`.
