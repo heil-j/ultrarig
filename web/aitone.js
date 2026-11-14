@@ -46,6 +46,15 @@
   <label class="sr-only" for="aiPrompt">Describe the tone</label>
   <textarea id="aiPrompt" maxlength="2000" placeholder="e.g. Early Van Halen brown sound, a touch of plate reverb"></textarea>
   <div class="aiex" id="aiEx" role="group" aria-label="Examples"></div>
+  <div class="aisrc">
+    <div class="aisrch">From a recording <span>optional · tankgtone listens to it and measures the tone</span></div>
+    <div class="srow">
+      <input type="text" id="aiLink" spellcheck="false" placeholder="Paste a YouTube link" aria-label="YouTube link or audio file path">
+      <input type="text" id="aiStart" spellcheck="false" placeholder="Start 1:32" aria-label="Start time (optional)" title="Analyse only this part, e.g. the solo. Faster and more accurate than a whole song.">
+      <input type="text" id="aiEnd" spellcheck="false" placeholder="End 1:48" aria-label="End time (optional)">
+    </div>
+    <label class="sep" title="Isolates the guitar from vocals, bass and drums first. Takes longer, but measures the guitar instead of the whole mix."><input type="checkbox" id="aiSep" checked> Separate the guitar from the mix (slower, more accurate)</label>
+  </div>
   <div class="aiopts">
     <label title="Off: show the result first and load it with a click"><input type="checkbox" id="aiAuto"> Load it on the pedal right away</label>
     <label title="The AI changes the chain that is playing instead of starting from scratch (e.g. &quot;less gain, more delay&quot;)"><input type="checkbox" id="aiCur"> Adjust what's playing</label>
@@ -148,14 +157,42 @@
   function setBusy(on, txt) {
     busyNow = on; btn.classList.toggle("busy", on);
     $id("aiWork").classList.toggle("on", on); if (txt) $id("aiWorkTx").textContent = tr(txt);
-    $id("aiGo").disabled = on; $id("aiPrompt").disabled = on;
+    for (const id of ["aiGo", "aiPrompt", "aiLink", "aiStart", "aiEnd", "aiSep"]) $id(id).disabled = on;
+  }
+
+  /* ---------- a recording: tankgtone downloads it, separates the guitar and measures the tone (its /api/analyse pipeline) ---------- */
+  let lastJob = null;                                            /* { key, id }: the same link and times again reuse the analysis */
+  const STAGES = { queued: "Waiting", input: "Downloading", fetch: "Downloading", decode: "Decoding", trim: "Trimming", separate: "Separating the guitar",
+    features: "Measuring the tone", analyse: "Measuring the tone", map: "Measuring the tone", done: "Done" };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function analyse(link, start, end, sep) {
+    const key = JSON.stringify([link, start, end, sep]);
+    if (lastJob && lastJob.key === key) {
+      try { const r = await fetch(server() + "/api/jobs/" + lastJob.id); if (r.ok && (await r.json()).state === "done") return lastJob.id; } catch (e) { /* run it again */ }
+    }
+    setBusy(true, "Getting the recording…");
+    const r = await fetch(server() + "/api/analyse", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: link, start: start || null, end: end || null, separate: sep }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof d.detail === "string" ? d.detail : tr("Couldn't start the analysis ({n}).", { n: r.status }));
+    const id = d.id, t0 = Date.now();
+    while (true) {
+      await sleep(1500);
+      if (!open) throw Object.assign(new Error("closed"), { name: "AbortError" });
+      if (Date.now() - t0 > 30 * 60000) throw new Error(tr("The analysis is taking too long. Try a shorter part (Start / End)."));
+      const s = await (await fetch(server() + "/api/jobs/" + id)).json();
+      if (s.state === "error") throw new Error(tr("Couldn't analyse the recording: {why}", { why: s.error || "unknown error" }));
+      if (s.state === "done") { lastJob = { key, id }; return id; }
+      const secs = Math.round((Date.now() - t0) / 1000);
+      $id("aiWorkTx").textContent = `${tr(STAGES[s.stage] || "Analysing")}… ${s.message ? "(" + s.message + ") " : ""}${secs}s`;
+    }
   }
   function showErr(msg) { const e = $id("aiErr"); e.textContent = msg || ""; e.classList.toggle("on", !!msg); }
 
   async function generate() {
     if (busyNow) return;
-    const prompt = $id("aiPrompt").value.trim();
-    if (!prompt) { showErr(tr("Describe the tone you want first.")); $id("aiPrompt").focus(); return; }
+    const prompt = $id("aiPrompt").value.trim(), link = $id("aiLink").value.trim();
+    if (!prompt && !link) { showErr(tr("Describe the tone you want, or paste a link to a recording.")); $id("aiPrompt").focus(); return; }
     if (!DEMO && !S.connected) { showErr(tr("Connect the pedal first.")); return; }
     if (typeof bleRo === "function" && bleRo()) { showErr(tr(typeof BLE_RO_NOTE === "string" ? BLE_RO_NOTE : "The pedal is read-only over this Bluetooth link.")); return; }
     if (!S.types || !Object.keys(S.types).length) { showErr(tr("The pedal hasn't sent its effect list yet. Try again in a moment.")); return; }
@@ -165,6 +202,17 @@
     const rig = { types: catalogue(), captures: L.caps.list.map(x => x.name), irs: L.irs.list.map(x => x.name),
       capture_now: nameAt(L.caps, L.caps.cur), ir_now: nameAt(L.irs, L.irs.cur), amp_tone_bands: S.aeqOk || DEMO ? (S.aeqDrv || DEMO ? 6 : 5) : 0 };
     const body = { prompt, rig, current: opts.cur ? current(L) : null };
+    if (link) {
+      try { body.job = await analyse(link, $id("aiStart").value.trim(), $id("aiEnd").value.trim(), $id("aiSep").checked); }
+      catch (e) {
+        setBusy(false);
+        if (e && e.name === "AbortError") return;
+        const net = e instanceof TypeError;
+        showErr(net ? tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin }) : String(e.message || e));
+        if (net) $id("aiSrv").open = true;
+        return;
+      }
+    }
     setBusy(true, (opts.cur ? "Adjusting your tone…" : "Building your tone…") + " " + tr("Free AI models can take a minute or two."));
     ctl = new AbortController();
     const timer = setTimeout(() => ctl && ctl.abort(), TIMEOUT_MS);

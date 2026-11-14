@@ -26,6 +26,18 @@ body.ph .aiBtn { height: 40px; padding: 0 10px; font-size: 14px; }
 .aiex { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .aiex button { border: 0; background: var(--panel2); color: var(--dim); padding: 5px 9px; font: 600 12px/1.2 var(--ft); }
 .aiex button:hover, .aiex button:focus-visible { color: var(--text); outline: 1px solid var(--rig); }
+/* from a recording: the link and the part to analyse */
+.aisrc { margin: 12px 0 0; padding: 10px 12px 12px; background: var(--bg2); }
+.aisrch { font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+.aisrch span { font: 400 12px/1.2 var(--ft); letter-spacing: 0; text-transform: none; color: var(--faint); margin-left: 6px; }
+.aisrc .srow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 92px; gap: 6px; }
+.aisrc input[type=text] { padding: 8px 10px; font: 14px var(--ft); color: var(--text); background: var(--bg) !important; outline: 1px solid var(--line); }
+.aisrc input[type=text]:focus-visible { outline: 2px solid var(--rig); }
+.aisrc input::placeholder { color: var(--faint); }
+.aisrc .sep { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 13px; color: var(--dim); cursor: pointer; }
+.aisrc .sep input { accent-color: var(--rig); width: 15px; height: 15px; margin: 0; }
+body.ph .aisrc .srow { grid-template-columns: 1fr 1fr; }
+body.ph .aisrc #aiLink { grid-column: 1 / -1; }
 .aiopts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 2px; font-size: 13px; color: var(--dim); }
 .aiopts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
 .aiopts input { accent-color: var(--rig); width: 15px; height: 15px; margin: 0; }

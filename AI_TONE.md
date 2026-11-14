@@ -23,6 +23,11 @@ UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
 - Blocks enter switched off and only switch on if the pedal's CPU allows it, exactly
   like importing a preset file. Nothing is written to a preset slot: the sound is
   **unsaved** until you save it to a slot with the usual Save button.
+- **From a recording**: paste a YouTube link (or an audio file path). tankgtone
+  downloads it, separates the guitar from the mix, measures the tone (gain,
+  EQ balance, delay time, reverb tail, modulation) and the AI matches those
+  measurements. A description is optional then. Use **Start / End** to analyse just
+  the solo: a whole song averages clean and driven parts, and takes much longer.
 - **Adjust what's playing** sends the current chain, so "less gain, more delay" edits
   it instead of starting over.
 - **Download preset file** saves the result as a normal `.ultrarig.json` you can
