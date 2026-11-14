@@ -84,6 +84,14 @@ body.ph .aisrc #aiLink { grid-column: 1 / -1; }
 .aiwarn { margin: 10px 0 0; padding: 0 0 0 16px; color: var(--amber); font-size: 12px; }
 .aiacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
+/* TONE3000: find a capture */
+.ait3k { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 12px; background: var(--bg2); }
+.ait3k > div { flex: 1; min-width: 0; font-size: 12px; color: var(--faint); }
+.ait3k b { display: block; font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; color: var(--text); margin-bottom: 3px; }
+.ait3k .btn { flex: none; }
+body.ph .ait3k { flex-direction: column; align-items: stretch; }
+.aiwarn li.hint { color: var(--rig); list-style: "→ "; }
+
 /* where the AI runs */
 .aisrv { margin-top: 14px; font-size: 13px; color: var(--dim); }
 .aisrv summary { cursor: pointer; font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; }

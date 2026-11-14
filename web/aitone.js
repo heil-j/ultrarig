@@ -62,6 +62,7 @@
   <div class="aiwork" id="aiWork" role="status" aria-live="polite"><span id="aiWorkTx">Building your tone…</span><span class="bar"><i></i></span></div>
   <div class="aierr" id="aiErr" role="alert"></div>
   <div class="aires" id="aiRes" aria-live="polite"></div>
+  <div class="ait3k"><div><b>Need a better amp capture?</b><span id="aiT3kTx">Pick a NAM capture on TONE3000 with your account. It goes straight into a free capture slot.</span></div><button class="btn" id="aiT3k" type="button">Find a capture on TONE3000</button></div>
   <div class="aifoot"><span class="ainote" id="aiNote"></span><span class="grow"></span><button class="btn" id="aiCancel">Close</button><button class="btn primary" id="aiGo">Generate</button></div>
   <details class="aisrv" id="aiSrv"><summary>AI server</summary><div id="aiSrvBody"></div></details>
 </div>`;
@@ -160,6 +161,62 @@
     for (const id of ["aiGo", "aiPrompt", "aiLink", "aiStart", "aiEnd", "aiSep"]) $id(id).disabled = on;
   }
 
+  /* ---------- TONE3000: pick a capture there (TONE3000's own picker, your account), it lands in a free capture slot ----------
+   * TONE3000's free API tier allows exactly this: the user picks, only that capture is downloaded. No automatic search. */
+  let t3kBusy = false;
+  async function findCapture(hint) {
+    if (t3kBusy || busyNow) return;
+    if (!DEMO && !S.connected) { showErr(tr("Connect the pedal first.")); return; }
+    const win = window.open("", "tone3000", "width=1180,height=860");   /* (opened now, inside the click: a popup opened after an await gets blocked) */
+    const fail = msg => { if (win && !win.closed) win.close(); showErr(msg); };
+    let st;
+    try { st = await (await fetch(server() + "/api/tone3000/status")).json(); }
+    catch (e) { fail(tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin })); return; }
+    if (!st.configured) { fail(tr("TONE3000 isn't set up yet: generate a publishable key at tone3000.com/settings, set TONE3000_CLIENT_ID on this computer, and restart tankgtone.")); return; }
+    const r = await fetch(server() + "/api/tone3000/start"), d = await r.json().catch(() => ({}));
+    if (!r.ok) { fail(typeof d.detail === "string" ? d.detail : tr("Couldn't open TONE3000.")); return; }
+    if (!win) { showErr(tr("The browser blocked the TONE3000 window. Allow pop-ups for this page and try again.")); return; }
+    win.location = d.url;
+    showErr(""); t3kBusy = true; btn.classList.add("busy");
+    $id("aiT3kTx").textContent = hint ? tr("On TONE3000, look for: {hint}. Pick one marked A2.", { hint }) : tr("Pick a capture in the TONE3000 window (A2 / Slimmable ones only).");
+    try {
+      const t0 = Date.now() / 1000; let sel = null;
+      while (!sel) {
+        await sleep(1500);
+        if (Date.now() / 1000 - t0 > 900) throw new Error(tr("No capture picked on TONE3000."));
+        const s = await (await fetch(server() + "/api/tone3000/status")).json();
+        if (s.selection && s.selection.at >= t0 - 1) sel = s.selection;
+        else if (win.closed && Date.now() / 1000 - t0 > 3) {                /* (closed without a pick: one last look, then stop) */
+          const s2 = await (await fetch(server() + "/api/tone3000/status")).json();
+          if (s2.selection && s2.selection.at >= t0 - 1) sel = s2.selection; else throw new Error(tr("No capture picked on TONE3000."));
+        }
+      }
+      if (sel.error) throw new Error(sel.error);
+      const model = sel.models.length > 1 ? await pickModel(sel) : sel.models[0];
+      if (!model) return;
+      $id("aiT3kTx").textContent = tr("Downloading “{title}”…", { title: sel.title });
+      const fr = await fetch(server() + "/api/tone3000/model/" + encodeURIComponent(model.id));
+      if (!fr.ok) { const e = await fr.json().catch(() => ({})); throw new Error(typeof e.detail === "string" ? e.detail : tr("Couldn't download it.")); }
+      const name = decodeURIComponent(fr.headers.get("X-File-Name") || "TONE3000 capture.nam");
+      const file = new File([await fr.blob()], name, { type: "application/octet-stream" });
+      closePanel();
+      if (typeof openLib === "function") await openLib("cap");                /* UltraRig's own library: the upload shows its usual progress */
+      await uploadCaptures([file], null);
+      toast(tr("“{title}” by {who} ({lic}) is on your pedal. Open AI TONE again to build a tone around it.", { title: sel.title, who: sel.creator || "TONE3000", lic: (sel.license || "see TONE3000").toUpperCase() }), "ok");
+    } catch (e) { showErr(String(e.message || e)); }
+    finally { t3kBusy = false; btn.classList.remove("busy"); $id("aiT3kTx").textContent = tr("Pick a NAM capture on TONE3000 with your account. It goes straight into a free capture slot."); }
+  }
+  function pickModel(sel) {                                        /* a tone with several A2 models: which one (UltraRig's own form) */
+    if (typeof uiForm !== "function") return Promise.resolve(sel.models[0]);
+    let s = null;
+    return uiForm({ title: sel.title, body: tr("This capture has {n} versions. Pick one.", { n: sel.models.length }), okLabel: "Load",
+      build: box => { const w = document.createElement("label"); w.className = "mdlg-fld"; s = document.createElement("select"); s.className = "mdlg-sel";
+        sel.models.forEach((mm, i) => { const o = document.createElement("option"); o.value = String(i); o.textContent = mm.name || ("Model " + (i + 1)); s.append(o); });
+        w.append(s); box.append(w); return { first: s }; },
+      submit: async () => sel.models[+s.value] || null });
+  }
+  $id("aiT3k").onclick = () => findCapture(last && last.capture_hint);
+
   /* ---------- a recording: tankgtone downloads it, separates the guitar and measures the tone (its /api/analyse pipeline) ---------- */
   let lastJob = null;                                            /* { key, id }: the same link and times again reuse the analysis */
   const STAGES = { queued: "Waiting", input: "Downloading", fetch: "Downloading", decode: "Decoding", trim: "Trimming", separate: "Separating the guitar",
@@ -254,7 +311,8 @@
     const toneTxt = Object.entries(amp.tone || {}).filter(([, v]) => v).map(([k, v]) => `${esc(k)} ${v > 0 ? "+" : ""}${(v / 10).toFixed(1)} dB`).join(" · ");
     const why = [`<li><i style="--c:var(--gold)"></i><div><b>AMP</b><span>${esc(amp.reason || "")}</span><span class="kv">${esc(ampTitle)}${amp.cab_ir ? " · " + esc(tr("Cab IR")) + ": " + esc(amp.cab_ir) : ""}${toneTxt ? " · " + toneTxt : ""}</span></div></li>`,
       ...blocks.map(b => `<li><i style="--c:${esc(lookOf(b.type).c)}"></i><div><b>${esc(b.label)}</b><span>${esc(b.reason)}</span>${kv(b) ? `<span class="kv">${kv(b)}</span>` : ""}</div></li>`)].join("");
-    const warns = (res.warnings || []).map(w => `<li>${esc(tr(w))}</li>`).join("");
+    const warns = (res.warnings || []).map(w => `<li>${esc(tr(w))}</li>`).join("")
+      + (res.capture_hint ? `<li class="hint">${esc(tr("None of your captures is a close match. Worth finding on TONE3000: {hint}", { hint: res.capture_hint }))}</li>` : "");
     const state = loaded ? `<span class="rstate">${esc(tr("Playing · not saved yet"))}</span>` : `<span class="rstate warn">${esc(tr("Not loaded"))}</span>`;
     box.innerHTML = `<div class="rhd"><span class="rname">${esc(res.name)}</span>${state}</div>
       ${res.summary ? `<div class="rsum">${esc(res.summary)}</div>` : ""}

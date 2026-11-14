@@ -28,6 +28,16 @@ UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
   EQ balance, delay time, reverb tail, modulation) and the AI matches those
   measurements. A description is optional then. Use **Start / End** to analyse just
   the solo: a whole song averages clean and driven parts, and takes much longer.
+- **Find a capture on TONE3000**: when none of your captures fits, the AI says what
+  to look for (e.g. "Marshall JCM800, crunch channel, medium gain"). The button opens
+  TONE3000's own picker, signed in with your TONE3000 account, filtered to the A2
+  NAM captures UltraRig can run. You pick one; only that capture is downloaded and
+  loaded into a free capture slot through UltraRig's capture library. The creator and
+  licence are shown when it loads. This follows TONE3000's free API tier: you choose,
+  nothing searches or downloads on its own. Setup: generate a publishable key at
+  tone3000.com/settings and `setx TONE3000_CLIENT_ID <key>`, then restart tankgtone.
+  If you registered redirect URIs there, add
+  `http://127.0.0.1:8765/api/tone3000/callback`.
 - **Adjust what's playing** sends the current chain, so "less gain, more delay" edits
   it instead of starting over.
 - **Download preset file** saves the result as a normal `.ultrarig.json` you can
