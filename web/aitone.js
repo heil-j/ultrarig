@@ -163,11 +163,16 @@
 
   /* ---------- TONE3000: pick a capture there (TONE3000's own picker, your account), it lands in a free capture slot ----------
    * TONE3000's free API tier allows exactly this: the user picks, only that capture is downloaded. No automatic search. */
-  let t3kBusy = false;
+  /* In the UltraRig Editor desktop app (the page is ultrarig://app) every new window goes to the system's web browser: there is no popup to
+   * watch, so the sign-in happens in the browser and the page waits for the pick (tankgtone gets it from TONE3000's callback either way). */
+  const DESKTOP = location.protocol === "ultrarig:";
+  let t3kBusy = false, t3kStop = false;
+  const T3K_IDLE = "Pick a NAM capture on TONE3000 with your account. It goes straight into a free capture slot.";
   async function findCapture(hint) {
-    if (t3kBusy || busyNow) return;
+    if (t3kBusy) { t3kStop = true; return; }                          /* (a second click while waiting: stop waiting) */
+    if (busyNow) return;
     if (!DEMO && !S.connected) { showErr(tr("Connect the pedal first.")); return; }
-    const win = window.open("", "tone3000", "width=1180,height=860");   /* (opened now, inside the click: a popup opened after an await gets blocked) */
+    const win = DESKTOP ? null : window.open("", "tone3000", "width=1180,height=860");   /* (browser: opened now, inside the click, or it gets blocked) */
     const fail = msg => { if (win && !win.closed) win.close(); showErr(msg); };
     let st;
     try { st = await (await fetch(server() + "/api/tone3000/status")).json(); }
@@ -175,18 +180,22 @@
     if (!st.configured) { fail(tr("TONE3000 isn't set up yet: generate a publishable key at tone3000.com/settings, set TONE3000_CLIENT_ID on this computer, and restart tankgtone.")); return; }
     const r = await fetch(server() + "/api/tone3000/start"), d = await r.json().catch(() => ({}));
     if (!r.ok) { fail(typeof d.detail === "string" ? d.detail : tr("Couldn't open TONE3000.")); return; }
-    if (!win) { showErr(tr("The browser blocked the TONE3000 window. Allow pop-ups for this page and try again.")); return; }
-    win.location = d.url;
-    showErr(""); t3kBusy = true; btn.classList.add("busy");
-    $id("aiT3kTx").textContent = hint ? tr("On TONE3000, look for: {hint}. Pick one marked A2.", { hint }) : tr("Pick a capture in the TONE3000 window (A2 / Slimmable ones only).");
+    if (DESKTOP) window.open(d.url);                                     /* (the app hands it to the web browser) */
+    else if (!win) { showErr(tr("The browser blocked the TONE3000 window. Allow pop-ups for this page and try again.")); return; }
+    else win.location = d.url;
+    showErr(""); t3kBusy = true; t3kStop = false; btn.classList.add("busy"); $id("aiT3k").textContent = tr("Stop waiting");
+    const where = DESKTOP ? tr("in your web browser") : tr("in the TONE3000 window");
+    $id("aiT3kTx").textContent = hint ? tr("Sign in and pick a capture {where}. Look for: {hint} (A2 only).", { where, hint })
+      : tr("Sign in and pick a capture {where} (A2 / Slimmable only). Then come back here.", { where });
     try {
       const t0 = Date.now() / 1000; let sel = null;
       while (!sel) {
         await sleep(1500);
+        if (t3kStop) return;
         if (Date.now() / 1000 - t0 > 900) throw new Error(tr("No capture picked on TONE3000."));
         const s = await (await fetch(server() + "/api/tone3000/status")).json();
         if (s.selection && s.selection.at >= t0 - 1) sel = s.selection;
-        else if (win.closed && Date.now() / 1000 - t0 > 3) {                /* (closed without a pick: one last look, then stop) */
+        else if (win && win.closed && Date.now() / 1000 - t0 > 3) {          /* (closed without a pick: one last look, then stop) */
           const s2 = await (await fetch(server() + "/api/tone3000/status")).json();
           if (s2.selection && s2.selection.at >= t0 - 1) sel = s2.selection; else throw new Error(tr("No capture picked on TONE3000."));
         }
@@ -204,7 +213,7 @@
       await uploadCaptures([file], null);
       toast(tr("“{title}” by {who} ({lic}) is on your pedal. Open AI TONE again to build a tone around it.", { title: sel.title, who: sel.creator || "TONE3000", lic: (sel.license || "see TONE3000").toUpperCase() }), "ok");
     } catch (e) { showErr(String(e.message || e)); }
-    finally { t3kBusy = false; btn.classList.remove("busy"); $id("aiT3kTx").textContent = tr("Pick a NAM capture on TONE3000 with your account. It goes straight into a free capture slot."); }
+    finally { t3kBusy = false; btn.classList.remove("busy"); $id("aiT3kTx").textContent = tr(T3K_IDLE); $id("aiT3k").textContent = tr("Find a capture on TONE3000"); }
   }
   function pickModel(sel) {                                        /* a tone with several A2 models: which one (UltraRig's own form) */
     if (typeof uiForm !== "function") return Promise.resolve(sel.models[0]);

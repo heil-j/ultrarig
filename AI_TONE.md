@@ -71,6 +71,23 @@ UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
    Click **Connect** for the pedal (Web Serial works on localhost), or add `#demo` to
    the address to try it without a pedal.
 
+### In the UltraRig Editor desktop app
+
+The editor (the Windows / macOS app from UltraRig's `editor-*` releases) keeps the
+same control page inside `resources/app.asar`. `desktop/patch_editor.py` adds AI Tone
+to it:
+
+```bash
+python desktop/patch_editor.py "C:/Users/<you>/Music"            # the folder with "UltraRig Editor.exe"
+python desktop/patch_editor.py "C:/Users/<you>/Music" --restore  # back to the original
+```
+
+Close the editor first. The script keeps the untouched archive as
+`resources/app.asar.original` (once), always rebuilds from it, and stops without
+writing anything if a newer editor's page doesn't match the edits. In the editor,
+the TONE3000 sign-in opens in your web browser (the app sends new windows there);
+the panel waits for your pick. tankgtone accepts the editor's `ultrarig://app` origin.
+
 You can also open `web/tankg.html` straight from disk: the panel then calls tankgtone
 at `http://127.0.0.1:8765` (change it under **AI server** in the panel).
 
