@@ -82,6 +82,14 @@ python desktop/patch_editor.py "C:/Users/<you>/Music"            # the folder wi
 python desktop/patch_editor.py "C:/Users/<you>/Music" --restore  # back to the original
 ```
 
+It also makes the editor **start tankgtone by itself** (in the background, no window)
+when it opens, and stop it when it closes: `desktop/aitone-launcher.js`, loaded by one
+line at the top of the editor's `main.js`. If tankgtone is already running, it's left
+alone. Its output goes to `%APPDATA%/UltraRig Editor/tankgtone.log`. The script finds
+tankgtone next to this repo and uses `pythonw.exe`; override with `--tankgtone` /
+`--python`, or skip it with `--no-autostart`. The AI keys come from your Windows user
+environment (`setx`), as for any app you open.
+
 Close the editor first. The script keeps the untouched archive as
 `resources/app.asar.original` (once), always rebuilds from it, and stops without
 writing anything if a newer editor's page doesn't match the edits. In the editor,

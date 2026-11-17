@@ -117,6 +117,10 @@
     }
     ping();
   }
+  /* the editor (desktop) starts tankgtone by itself when it opens (desktop/aitone-launcher.js): right after, it may still be starting */
+  const noServer = () => location.protocol === "ultrarig:"
+    ? tr("tankgtone isn't answering yet. If you just opened the editor, it's still starting: try again in a few seconds.")
+    : tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin });
   async function ping() {
     const p = $id("aiPing"); if (!p) return;
     p.className = ""; p.textContent = tr("Checking…");
@@ -126,7 +130,7 @@
       const who = d.ultrarig_ai !== undefined ? d.ultrarig_ai : (d.ai ? "anthropic" : null);
       if (!who) { p.className = "no"; p.textContent = tr("tankgtone is running, but has no AI key: set OPENROUTER_API_KEY (free) or ANTHROPIC_API_KEY and restart it."); return; }
       p.className = "ok"; p.textContent = tr(who === "openrouter" ? "Connected to tankgtone. AI ready (OpenRouter free model)." : "Connected to tankgtone. AI ready (Claude).");
-    } catch (e) { p.className = "no"; p.textContent = tr("tankgtone isn't running at this address."); }
+    } catch (e) { p.className = "no"; p.textContent = noServer(); }
   }
 
   /* ---------- what this pedal has ---------- */
@@ -176,7 +180,7 @@
     const fail = msg => { if (win && !win.closed) win.close(); showErr(msg); };
     let st;
     try { st = await (await fetch(server() + "/api/tone3000/status")).json(); }
-    catch (e) { fail(tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin })); return; }
+    catch (e) { fail(noServer()); return; }
     if (!st.configured) { fail(tr("TONE3000 isn't set up yet: generate a publishable key at tone3000.com/settings, set TONE3000_CLIENT_ID on this computer, and restart tankgtone.")); return; }
     const r = await fetch(server() + "/api/tone3000/start"), d = await r.json().catch(() => ({}));
     if (!r.ok) { fail(typeof d.detail === "string" ? d.detail : tr("Couldn't open TONE3000.")); return; }
@@ -274,7 +278,7 @@
         setBusy(false);
         if (e && e.name === "AbortError") return;
         const net = e instanceof TypeError;
-        showErr(net ? tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin }) : String(e.message || e));
+        showErr(net ? noServer() : String(e.message || e));
         if (net) $id("aiSrv").open = true;
         return;
       }
@@ -292,7 +296,7 @@
       clearTimeout(timer); ctl = null; setBusy(false);
       if (e && e.name === "AbortError") { if (open) showErr(tr("It took too long. Try again.")); return; }
       const net = e instanceof TypeError;
-      showErr(net ? tr("Can't reach tankgtone at {url}. Start it with: python -m tankgtone ui", { url: server() || location.origin }) : String(e.message || e));
+      showErr(net ? noServer() : String(e.message || e));
       if (net) $id("aiSrv").open = true;
       return;
     }
