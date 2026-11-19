@@ -28,6 +28,14 @@ UltraRig page (web/tankg.html + aitone.js)            tankgtone (your PC)
   EQ balance, delay time, reverb tail, modulation) and the AI matches those
   measurements. A description is optional then. Use **Start / End** to analyse just
   the solo: a whole song averages clean and driven parts, and takes much longer.
+- **Copying a recording** (tankgtone `matching.py`): the measurements become explicit
+  targets in the pedal's units (gain class, EQ voicing, delay ms, reverb tail,
+  modulation), the AI follows a session engineer's method, and then the confident
+  targets are **enforced** on its answer: measured delay time with sync off, reverb on a
+  wet recording, no tremolo for slow phrasing swells, the drive inside the measured gain
+  class, one amp, a cab after an amp-only capture (and only there), no squashing
+  compressor or gate on a dynamic part. Every correction is listed under the result
+  with a ✓. Words in the description ("no delay", "add a tremolo") override them.
 - **Find a capture on TONE3000**: when none of your captures fits, the AI says what
   to look for (e.g. "Marshall JCM800, crunch channel, medium gain"). The button opens
   TONE3000's own picker, signed in with your TONE3000 account, filtered to the A2

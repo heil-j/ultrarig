@@ -91,6 +91,7 @@ body.ph .aisrc #aiLink { grid-column: 1 / -1; }
 .ait3k .btn { flex: none; }
 body.ph .ait3k { flex-direction: column; align-items: stretch; }
 .aiwarn li.hint { color: var(--rig); list-style: "→ "; }
+.aiwarn li.anchor { color: var(--rig); list-style: "✓ "; }
 
 /* where the AI runs */
 .aisrv { margin-top: 14px; font-size: 13px; color: var(--dim); }

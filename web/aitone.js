@@ -324,7 +324,8 @@
     const toneTxt = Object.entries(amp.tone || {}).filter(([, v]) => v).map(([k, v]) => `${esc(k)} ${v > 0 ? "+" : ""}${(v / 10).toFixed(1)} dB`).join(" · ");
     const why = [`<li><i style="--c:var(--gold)"></i><div><b>AMP</b><span>${esc(amp.reason || "")}</span><span class="kv">${esc(ampTitle)}${amp.cab_ir ? " · " + esc(tr("Cab IR")) + ": " + esc(amp.cab_ir) : ""}${toneTxt ? " · " + toneTxt : ""}</span></div></li>`,
       ...blocks.map(b => `<li><i style="--c:${esc(lookOf(b.type).c)}"></i><div><b>${esc(b.label)}</b><span>${esc(b.reason)}</span>${kv(b) ? `<span class="kv">${kv(b)}</span>` : ""}</div></li>`)].join("");
-    const warns = (res.warnings || []).map(w => `<li>${esc(tr(w))}</li>`).join("")
+    const warns = (res.anchors || []).map(a => `<li class="anchor">${esc(tr(a))}</li>`).join("")   /* matched to the recording by tankgtone */
+      + (res.warnings || []).map(w => `<li>${esc(tr(w))}</li>`).join("")
       + (res.capture_hint ? `<li class="hint">${esc(tr("None of your captures is a close match. Worth finding on TONE3000: {hint}", { hint: res.capture_hint }))}</li>` : "");
     const state = loaded ? `<span class="rstate">${esc(tr("Playing · not saved yet"))}</span>` : `<span class="rstate warn">${esc(tr("Not loaded"))}</span>`;
     box.innerHTML = `<div class="rhd"><span class="rname">${esc(res.name)}</span>${state}</div>
