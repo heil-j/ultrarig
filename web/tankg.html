@@ -13882,6 +13882,8 @@ async function pioAttImport(pre, doc, send, ctx) {
 }
 /* AI tone (aitone.js): o.auto = load without the "Import?" question when nothing unsaved would be lost (the AI panel already showed what it builds) */
 async function pioImport(text, o = {}) {
+  let fitNotes = [];                                                       /* AI tone: fit heavy presets to the pedal's CPU (aitone.js urFitPreset) */
+  if (typeof window.urFitPreset === "function") { try { const f = window.urFitPreset(text); text = f.text; fitNotes = f.notes || []; } catch (e) { /* load it as it is */ } }
   if (pioBusy) return false;
   if (bleRo()) { toast(BLE_RO_NOTE, "warn"); return false; }          /* (revisión P2-2: nada se aplicaría y la página diría que cargó) */
   const r = pioParse(text);
@@ -13903,7 +13905,7 @@ async function pioImport(text, o = {}) {
   pioBusy = false;
   let plan = pioPlan(pre, ctx);
   const tw = w => T(w.k, { ...w, why: w.why ? T(w.why) : "" });
-  const notes = [...r.warn.map(x => T(x)), ...at.notes, ...plan.warn.map(tw)];
+  const notes = [...fitNotes.map(n => T("Fitted to your pedal: ") + n), ...r.warn.map(x => T(x)), ...at.notes, ...plan.warn.map(tw)];
   const name = plan.name;
   if (!(o.auto && !edCount() && !at.ups.length) && !await uiConfirm({ title: T(o.auto ? "Load \"{name}\"?" : "Import \"{name}\"?", { name }), okLabel: o.auto ? "Load" : "Import",
     body: edCount() ? "Replaces what is playing. Unsaved changes are lost." : "Replaces what is playing.", details: notes })) return false;   /* (2026-11-11: los avisos, plegados) */
@@ -13943,6 +13945,7 @@ async function pioImport(text, o = {}) {
   const after = [...upWarn, ...(upWarn.length ? plan.warn : []), ...res.warn].map(tw);
   if (after.length) await uiAlert({ title: "Loaded, with some changes", body: after.join("\n") });
   toast(T("\"{name}\" loaded. Save it to a slot.", { name }), "ok");
+  if (fitNotes.length) toast(T("Fitted to your pedal's CPU: {n}", { n: fitNotes.join("; ") }), "ok");
   if (o.auto) return true;                                                 /* (AI tone: the chain stays in view) */
   if (PH) setTab("presets"); else { const sd = document.querySelector(".side"); if (sd && sd.classList) { sideTop(sd); sd.classList.add("open"); } }
   return true;

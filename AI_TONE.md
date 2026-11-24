@@ -104,16 +104,29 @@ writing anything if a newer editor's page doesn't match the edits. In the editor
 the TONE3000 sign-in opens in your web browser (the app sends new windows there);
 the panel waits for your pick. tankgtone accepts the editor's `ultrarig://app` origin.
 
-### Keeping the pedal's CPU for effects (alpha 13+)
+### Heavy presets: fit them to the pedal's CPU
 
-From alpha 13 the pedal is also a USB sound card. While Windows uses it (for example as
-the default communications speaker for calls), the pedal gives the stream CPU and its
-room for effects drops by about a quarter (measured 38,267 -> 28,740 ticks), so heavy
-presets load with blocks off. alpha 13.1 has no switch for it, so
-`desktop/usb_audio_guard.ps1 -Install` (one administrator prompt) disables the pedal's
-Windows sound devices and adds a task that disables them again at sign-in and whenever
-UltraRig Editor opens (the launcher runs it; a new USB port makes new, enabled devices).
-`-Uninstall` turns USB audio back on for recording or re-amping; `-Status` shows the state.
+The pedal's room for effects is what the NAM capture leaves (the capture uses about two
+thirds of the CPU), and it swings from second to second: measured on a Tank-G v2 on
+alpha 13.1 between about 31,000 and 43,000 ticks, whether or not USB audio, Bluetooth
+music or the computer's sound is playing (none of those changed it measurably). A heavy
+scene that needs ~39,000 (pitch shifter, two oversampled drives, delay, Cloud reverb,
+stereo) then fits one second and not the next: blocks stay off, the pedal drops to mono,
+or it stutters.
+
+**Fit heavy presets to my pedal** (on by default, in the AI TONE panel) fits every preset
+you import or generate before it loads: each scene is estimated from the pedal's own
+catalogue (x1.40 mono, x1.55 stereo, measured), and where it is over 85 % of 33,500 ticks,
+oversampling goes off on its drives, biggest saving first (what UltraRig's "Ease it" does,
+but for every scene and before the stutter). A scene still too heavy in mono loses a costly
+effect only if it is barely audible (10 % mix or less). An audible effect is never removed:
+the import says which scene still needs one off. Measured on the pedal with the computer
+playing into it: BULONG's SOLO went from 104 % with blocks refused to 79-84 % with all 8
+effects on (mono; in stereo that scene is over the pedal's room, so the pedal plays it mono).
+
+For preset files on disk, tankgtone does the same in bulk:
+`python -m tankgtone ultrarig-fit "<folder or files>"` writes a "(practice)" copy of
+every preset that needed it and leaves the originals untouched.
 
 You can also open `web/tankg.html` straight from disk: the panel then calls tankgtone
 at `http://127.0.0.1:8765` (change it under **AI server** in the panel).

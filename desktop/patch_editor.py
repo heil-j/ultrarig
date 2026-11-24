@@ -35,6 +35,12 @@ MARK = "/* AI tone (aitone.js)"
 MAIN_EDIT = ('"use strict";\n',
              '"use strict";\nrequire("./aitone-launcher");   /* AI tone (tankgtone fork): starts tankgtone with the editor */\n')
 
+FIT_LINE = '  let fitNotes = [];                                                       /* AI tone: fit heavy presets to the pedal\'s CPU (aitone.js urFitPreset) */\n  if (typeof window.urFitPreset === "function") { try { const f = window.urFitPreset(text); text = f.text; fitNotes = f.notes || []; } catch (e) { /* load it as it is */ } }\n'
+NOTES_A = '  const notes = [...r.warn.map(x => T(x)), ...at.notes, ...plan.warn.map(tw)];'
+NOTES_B = '  const notes = [...fitNotes.map(n => T("Fitted to your pedal: ") + n), ...r.warn.map(x => T(x)), ...at.notes, ...plan.warn.map(tw)];'
+TOAST_A = '  toast(T("\\"{name}\\" loaded. Save it to a slot.", { name }), "ok");'
+TOAST_B = '  toast(T("\\"{name}\\" loaded. Save it to a slot.", { name }), "ok");\n  if (fitNotes.length) toast(T("Fitted to your pedal\'s CPU: {n}", { n: fitNotes.join("; ") }), "ok");'
+
 # (what to find, what to put instead): each must match exactly once in the editor's www/tankg.html
 EDITS = [
     ("</head>", '<link rel="stylesheet" href="aitone.css">\n</head>'),
@@ -43,7 +49,9 @@ EDITS = [
      '<script src="aitone.js"></script>\n</body>'),
     ("async function pioImport(text) {",
      MARK + ": o.auto = load without the \"Import?\" question when nothing unsaved would be lost */\n"
-     "async function pioImport(text, o = {}) {"),
+     "async function pioImport(text, o = {}) {\n" + FIT_LINE),
+    (NOTES_A, NOTES_B),
+    (TOAST_A, TOAST_B),
     ('  if (!await uiConfirm({ title: T("Import \\"{name}\\"?", { name }), okLabel: "Import",',
      '  if (!(o.auto && !edCount() && !at.ups.length) && !await uiConfirm({ title: T(o.auto ? "Load \\"{name}\\"?" : '
      '"Import \\"{name}\\"?", { name }), okLabel: o.auto ? "Load" : "Import",'),

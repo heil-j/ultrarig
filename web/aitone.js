@@ -21,7 +21,7 @@
   const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private window: only for this visit */ } } };
   const server = () => sameOrigin ? "" : (store.get(SRV_KEY, DEF_SRV) || DEF_SRV).replace(/\/+$/, "");
-  const opts = (() => { try { return Object.assign({ auto: true, cur: false }, JSON.parse(store.get(OPT_KEY, "{}"))); } catch (e) { return { auto: true, cur: false }; } })();
+  const opts = (() => { try { return Object.assign({ auto: true, cur: false, fit: true }, JSON.parse(store.get(OPT_KEY, "{}"))); } catch (e) { return { auto: true, cur: false }; } })();
   const saveOpts = () => store.set(OPT_KEY, JSON.stringify(opts));
   const tr = (s, v) => (typeof T === "function" ? T(s, v) : s);
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,6 +30,75 @@
   const EXAMPLES = ["Warm 70s blues lead, light spring reverb", "Tight modern metal rhythm, no effects", "Edge of breakup with a slapback delay",
     "Shimmery ambient clean pad", "Fuzzy stoner doom", "Funky clean with auto-wah"];
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Zm6.5 10l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1ZM6 15l.7 1.6 1.6.7-1.6.7L6 19.6l-.7-1.6-1.6-.7 1.6-.7L6 15Z" fill="currentColor"/></svg>';
+
+  /* ---------- fit heavy presets to the pedal's CPU, on every import (tankgtone presetfit.py, same rules) ----------
+   * The effects' room wanders (a Tank-G v2 on alpha 13.1: ~31-43 k ticks, usually 34-39 k) and a heavy scene that needs ~39 k then
+   * loads with blocks left off, drops to mono or stutters. Before the preset loads: estimate each scene (catalogue cost x 1.40 mono /
+   * 1.55 stereo, measured on the pedal) against 85 % of the room; where it's over, oversampling off on the drives, biggest saving first
+   * (what "Ease it" does, for every scene, before the stutter); if a scene is still too heavy in mono, a costly effect at <= 10 % mix
+   * goes off. Never an audible effect. Returns { text, notes }. Off with the panel's "Fit heavy presets" switch. */
+  const FIT = { mono: 1.40, stereo: 1.55, target: 0.85, practice: 33500, quietMix: 10,
+    quiet: new Set(["cloud", "shimmer", "reverb2", "hybrid", "plate", "spring", "spectral", "reverb", "delay", "chorus", "flanger", "doubler", "pitchpro"]) };
+  function urFitPreset(text) {
+    let doc; try { doc = JSON.parse(text); } catch (e) { return { text, notes: [] }; }
+    if (!doc || doc.format !== "ultrarig-preset" || !Array.isArray(doc.presets) || !S.types) return { text, notes: [] };
+    /* a fixed budget, not the live reading: the room swings by thousands of ticks from one second to the next (and dips while a
+     * preset loads), so the same preset must always be fitted the same way. 33,500 = the low end measured while practising */
+    const budget = FIT.practice;
+    const osDef = t => { const q = (t.params || []).find(x => x.name === "os_n"); return q ? q.def : undefined; };
+    const cost = (t, p) => {
+      if (!t) return 0;
+      if (t.os && Array.isArray(t.os.cost) && Array.isArray(t.os.tiers)) {
+        const v = p && p.os_n != null ? p.os_n : osDef(t), k = t.os.tiers.indexOf(v);
+        return t.os.cost[k >= 0 ? k : Math.max(0, t.os.tiers.findIndex(x => x >= (v || 0)))] || t.cost || 0;
+      }
+      return t.cost || 0;
+    };
+    const notes = [];
+    for (const pre of doc.presets) {
+      const snd = pre && pre.sound; if (!snd || !Array.isArray(snd.chain)) continue;
+      const blocks = snd.chain.filter(b => b && b.type), byId = new Map(blocks.map(b => [b.id, b]));
+      const factor = snd.stereo === false ? FIT.mono : FIT.stereo;
+      const baseOn = new Map(blocks.map(b => [b.id, b.on !== false])), baseP = new Map(blocks.map(b => [b.id, (b.params = b.params || {})]));
+      const states = [];
+      for (const sc of Array.isArray(snd.scenes) ? snd.scenes : []) {          /* every scene gets its own copy of the ORIGINAL settings first */
+        const sb = sc.blocks = sc.blocks || {}, on = new Map(), p = new Map();
+        for (const b of blocks) { const e = sb[b.id] = sb[b.id] || {}; if (e.on === undefined) e.on = baseOn.get(b.id); on.set(b.id, e.on !== false); p.set(b.id, (e.params = e.params || { ...baseP.get(b.id) })); }
+        states.push({ label: sc.name || "Scene " + ((sc.index || 0) + 1), on, p, off: id => { sb[id].on = false; } });
+      }
+      states.unshift({ label: "", on: new Map(baseOn), p: baseP, off: id => { byId.get(id).on = false; } });
+      for (const st of states) {
+        const est = () => factor * blocks.reduce((a, b) => a + (st.on.get(b.id) ? cost(S.types[b.type], st.p.get(b.id)) : 0), 0);
+        const eased = [], quiet = [];
+        while (est() > budget * FIT.target) {
+          let best = null;
+          for (const b of blocks) {
+            const t = S.types[b.type], p = st.p.get(b.id);
+            if (!st.on.get(b.id) || !t || !t.os || !Array.isArray(t.os.cost)) continue;
+            const offV = t.os.tiers[0], cur = p.os_n != null ? p.os_n : osDef(t); if (cur === offV) continue;
+            const s = cost(t, p) - t.os.cost[0]; if (s > 0 && (!best || s > best.s)) best = { s, b, offV };
+          }
+          if (!best) break;
+          st.p.get(best.b.id).os_n = best.offV; eased.push(lookOf(best.b.type).name);
+        }
+        while (est() / factor * FIT.mono > budget) {
+          let best = null;
+          for (const b of blocks) {
+            const p = st.p.get(b.id), mix = p.mezcla_pct, c = cost(S.types[b.type], p);
+            if (st.on.get(b.id) && FIT.quiet.has(b.type) && mix != null && mix <= FIT.quietMix && (!best || c > best.c)) best = { c, b, mix };
+          }
+          if (!best) break;
+          st.on.set(best.b.id, false); st.off(best.b.id); quiet.push(`${lookOf(best.b.type).name} (${best.mix}% mix)`);
+        }
+        const where = st.label ? st.label + ": " : "";
+        if (eased.length) notes.push(where + T("oversampling off on {list}", { list: eased.join(", ") }));
+        if (quiet.length) notes.push(where + T("switched off {list}: barely audible", { list: quiet.join(", ") }));
+        if (est() / factor * FIT.mono > budget) notes.push(where + T("still too heavy for this pedal: turn off one effect in this scene"));
+      }
+    }
+    return notes.length ? { text: JSON.stringify(doc), notes: [...new Set(notes)] } : { text, notes };
+  }
+  window.urFitPreset = text => opts.fit === false ? { text, notes: [] } : urFitPreset(text);
 
   /* ---------- the button and the panel ---------- */
   const btn = document.createElement("button");
@@ -58,6 +127,7 @@
   <div class="aiopts">
     <label title="Off: show the result first and load it with a click"><input type="checkbox" id="aiAuto"> Load it on the pedal right away</label>
     <label title="The AI changes the chain that is playing instead of starting from scratch (e.g. &quot;less gain, more delay&quot;)"><input type="checkbox" id="aiCur"> Adjust what's playing</label>
+    <label title="Every preset you import or generate: where a scene is too heavy for the pedal's CPU, oversampling goes off on its drives (like Ease it), so every effect keeps playing. Never removes an audible effect."><input type="checkbox" id="aiFit"> Fit heavy presets to my pedal</label>
   </div>
   <div class="aiwork" id="aiWork" role="status" aria-live="polite"><span id="aiWorkTx">Building your tone…</span><span class="bar"><i></i></span></div>
   <div class="aierr" id="aiErr" role="alert"></div>
@@ -74,6 +144,8 @@
   $id("aiAuto").checked = !!opts.auto; $id("aiCur").checked = !!opts.cur;
   $id("aiAuto").onchange = e => { opts.auto = e.target.checked; saveOpts(); };
   $id("aiCur").onchange = e => { opts.cur = e.target.checked; saveOpts(); };
+  $id("aiFit").checked = opts.fit !== false;
+  $id("aiFit").onchange = e => { opts.fit = e.target.checked; saveOpts(); };
 
   let open = false, busyNow = false, ctl = null, last = null, back = null;
   function openPanel() {
@@ -272,7 +344,8 @@
     try { L = await libs(); } catch (e) { setBusy(false); showErr(tr("Pedal not connected.")); return; }
     const rig = { types: catalogue(), captures: L.caps.list.map(x => x.name), irs: L.irs.list.map(x => x.name),
       capture_now: nameAt(L.caps, L.caps.cur), ir_now: nameAt(L.irs, L.irs.cur), amp_tone_bands: S.aeqOk || DEMO ? (S.aeqDrv || DEMO ? 6 : 5) : 0,
-      /* the pedal's CPU room for effects, with 25 % kept free: it shrinks by about that much while USB audio is open (alpha 13). Unknown in the demo */
+      /* the pedal's CPU room for effects, with 25 % kept free: the room swings by about that much from second to second (measured 31-43 k
+       * ticks on a Tank-G v2, alpha 13.1). Unknown in the demo */
       budget: !DEMO && S.cpu && S.cpu[1] > 0 ? Math.round(S.cpu[1] * 0.75) : 0 };
     const body = { prompt, rig, current: opts.cur ? current(L) : null };
     if (link) {
