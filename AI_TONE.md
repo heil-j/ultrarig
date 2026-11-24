@@ -104,6 +104,17 @@ writing anything if a newer editor's page doesn't match the edits. In the editor
 the TONE3000 sign-in opens in your web browser (the app sends new windows there);
 the panel waits for your pick. tankgtone accepts the editor's `ultrarig://app` origin.
 
+### Keeping the pedal's CPU for effects (alpha 13+)
+
+From alpha 13 the pedal is also a USB sound card. While Windows uses it (for example as
+the default communications speaker for calls), the pedal gives the stream CPU and its
+room for effects drops by about a quarter (measured 38,267 -> 28,740 ticks), so heavy
+presets load with blocks off. alpha 13.1 has no switch for it, so
+`desktop/usb_audio_guard.ps1 -Install` (one administrator prompt) disables the pedal's
+Windows sound devices and adds a task that disables them again at sign-in and whenever
+UltraRig Editor opens (the launcher runs it; a new USB port makes new, enabled devices).
+`-Uninstall` turns USB audio back on for recording or re-amping; `-Status` shows the state.
+
 You can also open `web/tankg.html` straight from disk: the panel then calls tankgtone
 at `http://127.0.0.1:8765` (change it under **AI server** in the panel).
 

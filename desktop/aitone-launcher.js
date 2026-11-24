@@ -24,7 +24,19 @@ function answering(port) {
 
 let child = null;
 
+/* USB audio guard (desktop/usb_audio_guard.ps1 -Install): its task disables the pedal's USB sound devices, which take CPU from the
+ * effects while Windows uses them. Run it on every editor start too, since a new USB port gives new, enabled devices. If the guard
+ * isn't installed this does nothing. The task runs with the rights it was installed with; no prompt here. */
+function usbAudioGuard() {
+  if (process.platform !== "win32") return;
+  try {
+    const p = spawn("schtasks", ["/run", "/tn", "UltraRig USB audio off"], { windowsHide: true, stdio: "ignore" });
+    p.on("error", () => {});
+  } catch { /* not installed */ }
+}
+
 async function start() {
+  usbAudioGuard();
   if (!cfg || !cfg.python || !cfg.cwd) return;
   const port = Number(cfg.port) || 8765;
   if (await answering(port)) return;                                  /* already running: leave it to whoever started it */
