@@ -1,0 +1,103 @@
+/* AI tone (tankgtone fork): the AI TONE button in the performance bar and its panel.
+ * Only the page's own brand tokens (--panel, --gold, --rig, --fd, ...): same teal fields, Big Shoulders labels,
+ * brass for the action, LED cyan for the selection, and each block drawn as its stompbox colour (LOOK). */
+
+/* the button: a sibling of TUNER / FOOTSWITCHES / STAGE */
+.aiBtn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px; border: 0; background: var(--panel2);
+  font: 800 16px/1 var(--fd); letter-spacing: .04em; text-transform: uppercase; color: var(--text); }
+.aiBtn svg { width: 17px; height: 17px; color: var(--rig); flex: none; }
+.aiBtn:hover { background: color-mix(in srgb, var(--panel2) 70%, #fff 6%); }
+.aiBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.aiBtn.busy svg { animation: aiSpin 1.6s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .aiBtn.busy svg { animation: none; } }
+@keyframes aiSpin { to { transform: rotate(360deg); } }
+body.ph .aiBtn { height: 40px; padding: 0 10px; font-size: 14px; }
+
+/* the panel */
+#aim .box { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+#aim .aihd { display: flex; align-items: flex-start; gap: 12px; }
+#aim .aihd h2 { display: flex; align-items: center; gap: 10px; }
+#aim .aihd h2 .tag { font: 800 12px/1 var(--fd); letter-spacing: .08em; color: #06272b; background: var(--rig); padding: 4px 6px 3px; }
+#aim .grow { flex: 1; }
+#aiPrompt { width: 100%; min-height: 92px; resize: vertical; padding: 10px 12px; font: 15px/1.4 var(--ft); color: var(--text);
+  background: var(--bg); border: 0; outline: 1px solid var(--line); }
+#aiPrompt:focus-visible { outline: 2px solid var(--rig); }
+#aiPrompt::placeholder { color: var(--faint); }
+.aiex { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.aiex button { border: 0; background: var(--panel2); color: var(--dim); padding: 5px 9px; font: 600 12px/1.2 var(--ft); }
+.aiex button:hover, .aiex button:focus-visible { color: var(--text); outline: 1px solid var(--rig); }
+/* from a recording: the link and the part to analyse */
+.aisrc { margin: 12px 0 0; padding: 10px 12px 12px; background: var(--bg2); }
+.aisrch { font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+.aisrch span { font: 400 12px/1.2 var(--ft); letter-spacing: 0; text-transform: none; color: var(--faint); margin-left: 6px; }
+.aisrc .srow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 92px; gap: 6px; }
+.aisrc input[type=text] { padding: 8px 10px; font: 14px var(--ft); color: var(--text); background: var(--bg) !important; outline: 1px solid var(--line); }
+.aisrc input[type=text]:focus-visible { outline: 2px solid var(--rig); }
+.aisrc input::placeholder { color: var(--faint); }
+.aisrc .sep { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 13px; color: var(--dim); cursor: pointer; }
+.aisrc .sep input { accent-color: var(--rig); width: 15px; height: 15px; margin: 0; }
+body.ph .aisrc .srow { grid-template-columns: 1fr 1fr; }
+body.ph .aisrc #aiLink { grid-column: 1 / -1; }
+.aiopts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 2px; font-size: 13px; color: var(--dim); }
+.aiopts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.aiopts input { accent-color: var(--rig); width: 15px; height: 15px; margin: 0; }
+.aifoot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.aifoot .ainote { font-size: 12px; color: var(--faint); }
+
+/* progress */
+.aiwork { display: none; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; background: var(--bg2); color: var(--dim); font-size: 13px; }
+.aiwork.on { display: flex; }
+.aiwork .bar { flex: 1; height: 6px; position: relative; overflow: hidden; }
+.aiwork .bar i { position: absolute; top: 0; bottom: 0; width: 35%; background: var(--rig); animation: aiSweep 1.3s ease-in-out infinite; }
+@keyframes aiSweep { 0% { left: -35%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .aiwork .bar i { animation: none; left: 0; width: 100%; opacity: .5; } }
+
+/* error */
+.aierr { display: none; margin-top: 12px; padding: 10px 12px; font-size: 13px; color: #ffd0d1; background: color-mix(in srgb, var(--red) 22%, var(--panel)); white-space: pre-line; }
+.aierr.on { display: block; }
+
+/* the result: the chain as a row of stompboxes, then why each one is there */
+.aires { display: none; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.aires.on { display: block; }
+.aires .rhd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.aires .rname { font: 900 24px/1 var(--fd); text-transform: uppercase; color: var(--text); }
+.aires .rstate { font: 800 12px/1 var(--fd); letter-spacing: .08em; text-transform: uppercase; color: var(--rig); }
+.aires .rstate.warn { color: var(--amber); }
+.aires .rsum { margin: 8px 0 12px; color: var(--dim); font-size: 13px; }
+.aichain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; padding: 12px; background: color-mix(in srgb, var(--bg) 60%, var(--panel)); }
+.aichain .w { width: 10px; height: 3px; background: var(--line2); flex: none; }
+.aichain .pd { position: relative; min-width: 62px; padding: 18px 8px 8px; background: var(--c); text-align: center; border-radius: 6px !important;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--c) 55%, #000); }
+.aichain .pd b { display: inline-block; font: 800 12px/1 var(--fd); letter-spacing: .02em; color: #f4f6f2; background: rgba(0,0,0,.42); padding: 3px 5px 2px; white-space: nowrap; }
+.aichain .pd::before { content: ""; position: absolute; top: 6px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50% !important; background: #ff4b3e; }
+.aichain .pd.off { background: color-mix(in srgb, var(--c) 40%, #2c3a38); box-shadow: 0 4px 0 #142826; }
+.aichain .pd.off::before { background: #2a0f10; }
+.aichain .pd.off b { color: var(--dim); }
+.aichain .pd.aiamp { --c: #3a2f22; outline: 2px solid var(--gold); outline-offset: -2px; }
+.aichain .pd.aiamp b { background: transparent; color: var(--gold2); }
+.aiwhy { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.aiwhy li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+.aiwhy li i { width: 12px; height: 12px; margin-top: 3px; background: var(--c); }
+.aiwhy li b { font: 800 13px/1.2 var(--fd); letter-spacing: .03em; text-transform: uppercase; margin-right: 6px; color: var(--text); }
+.aiwhy li span { color: var(--dim); }
+.aiwhy li .kv { display: block; margin-top: 2px; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.aiwarn { margin: 10px 0 0; padding: 0 0 0 16px; color: var(--amber); font-size: 12px; }
+.aiacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+/* TONE3000: find a capture */
+.ait3k { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 12px; background: var(--bg2); }
+.ait3k > div { flex: 1; min-width: 0; font-size: 12px; color: var(--faint); }
+.ait3k b { display: block; font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; color: var(--text); margin-bottom: 3px; }
+.ait3k .btn { flex: none; }
+body.ph .ait3k { flex-direction: column; align-items: stretch; }
+.aiwarn li.hint { color: var(--rig); list-style: "→ "; }
+.aiwarn li.anchor { color: var(--rig); list-style: "✓ "; }
+
+/* where the AI runs */
+.aisrv { margin-top: 14px; font-size: 13px; color: var(--dim); }
+.aisrv summary { cursor: pointer; font: 800 13px/1.2 var(--fd); letter-spacing: .05em; text-transform: uppercase; }
+.aisrv .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.aisrv input { flex: 1; padding: 7px 9px; font: 13px var(--ft); }
+.aisrv .ok { color: var(--green); } .aisrv .no { color: var(--red); }
+.aisrv p { margin: 8px 0 0; color: var(--faint); font-size: 12px; }
+.aisrv code { color: var(--text); }
