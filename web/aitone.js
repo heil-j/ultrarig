@@ -146,6 +146,7 @@
     for (const [name, t] of Object.entries(S.types || {})) {
       if (!t || !Array.isArray(t.params)) continue;
       out[name] = { label: lookOf(name).name, cost: t.cost || 0,
+        ...(t.os && Array.isArray(t.os.tiers) && Array.isArray(t.os.cost) ? { os: { tiers: t.os.tiers, cost: t.os.cost } } : {}),   /* oversampling tiers and their CPU cost */
         params: t.params.filter(q => q.name).map(q => ({ name: q.name, label: plabel(q.name).lab, min: q.min, max: q.max, def: q.def })) };
     }
     return out;
@@ -270,7 +271,9 @@
     let L;
     try { L = await libs(); } catch (e) { setBusy(false); showErr(tr("Pedal not connected.")); return; }
     const rig = { types: catalogue(), captures: L.caps.list.map(x => x.name), irs: L.irs.list.map(x => x.name),
-      capture_now: nameAt(L.caps, L.caps.cur), ir_now: nameAt(L.irs, L.irs.cur), amp_tone_bands: S.aeqOk || DEMO ? (S.aeqDrv || DEMO ? 6 : 5) : 0 };
+      capture_now: nameAt(L.caps, L.caps.cur), ir_now: nameAt(L.irs, L.irs.cur), amp_tone_bands: S.aeqOk || DEMO ? (S.aeqDrv || DEMO ? 6 : 5) : 0,
+      /* the pedal's CPU room for effects, with 25 % kept free: it shrinks by about that much while USB audio is open (alpha 13). Unknown in the demo */
+      budget: !DEMO && S.cpu && S.cpu[1] > 0 ? Math.round(S.cpu[1] * 0.75) : 0 };
     const body = { prompt, rig, current: opts.cur ? current(L) : null };
     if (link) {
       try { body.job = await analyse(link, $id("aiStart").value.trim(), $id("aiEnd").value.trim(), $id("aiSep").checked); }
